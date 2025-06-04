@@ -12,7 +12,8 @@ class MboxDatabase:
     conn: sqlite3.Connection
 
     def create_table(self) -> None:
-        create_table_sql = dedent("""
+        create_table_sql = dedent(
+            """
                                   CREATE TABLE IF NOT EXISTS emails
                                   (
                                       id
@@ -35,16 +36,19 @@ class MboxDatabase:
                                                       '$.headers.Subject[0]'
                                               )) VIRTUAL NOT NULL
                                   );
-                                  """).strip()
+                                  """
+        ).strip()
 
         self.conn.execute(create_table_sql)
 
-        create_view_sql = dedent("""
+        create_view_sql = dedent(
+            """
                                  CREATE VIEW IF NOT EXISTS email_overview AS
                                  SELECT id,
                                         message_id,
                                         json_extract(as_json, '$.headers.Date[0]') AS Date
-                                 FROM emails;""").strip()
+                                 FROM emails;"""
+        ).strip()
         self.conn.execute(create_view_sql)
         self.conn.commit()
 

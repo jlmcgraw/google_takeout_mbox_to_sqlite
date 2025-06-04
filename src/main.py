@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 from textwrap import dedent
 
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore
 
 from mbox_database import MboxDatabase
 from mbox_message import MboxMessage
@@ -22,7 +22,9 @@ def process_mbox(mbox_path: Path, db_path: Path) -> None:
         # conn.execute("PRAGMA temp_store = MEMORY")
         # conn.execute("PRAGMA cache_size = 10000")
 
-        table = MboxDatabase("emails", ["message_id", "as_json", "received_at"], conn=conn)
+        table = MboxDatabase(
+            "emails", ["message_id", "as_json", "received_at"], conn=conn
+        )
         email_insert_statement = table.construct_insert_statement()
 
         # Create the table
@@ -58,12 +60,15 @@ def create_indexes(conn: sqlite3.Connection) -> None:
     existing = conn.execute("PRAGMA index_list(emails)").fetchall()
     if any(row[1] == index_name for row in existing):
         return
-    create_index_sql = dedent("""
+    create_index_sql = dedent(
+        """
         CREATE INDEX index_received
         ON emails (json_extract(as_json, '$.headers.Date[0]'))
-    """).strip()
+    """
+    ).strip()
     conn.execute(create_index_sql)
     logging.info(f"Created index: {index_name}")
+
 
 def main() -> None:
     args = parse_arguments()
