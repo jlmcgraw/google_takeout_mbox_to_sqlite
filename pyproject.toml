@@ -1,0 +1,8 @@
+[project]
+name = "google_takeout_mbox_to_sqlite"
+version = "0.1.0"
+description = "Import an mbox archive into sqlite"
+requires-python = ">=3.12"
+dependencies = [
+    "tqdm",
+]
