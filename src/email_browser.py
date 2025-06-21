@@ -8,6 +8,7 @@ import json
 import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List
+import inspect
 
 from textual.app import App, ComposeResult
 from textual.widgets import DataTable, Footer, Header
@@ -20,6 +21,17 @@ try:  # pragma: no cover - import varies by Textual version
     from textual.widgets import TextLog  # type: ignore
 except Exception:  # pragma: no cover - fallback for old/new versions
     from textual.widgets import Log as TextLog
+
+
+def _create_text_log() -> TextLog:
+    """Create a TextLog/Log widget while handling version differences."""
+    params = inspect.signature(TextLog).parameters
+    kwargs: dict[str, Any] = {}
+    if "highlight" in params:
+        kwargs["highlight"] = False
+    if "markup" in params:
+        kwargs["markup"] = False
+    return TextLog(**kwargs)
 
 
 class EmailBrowserApp(App):
@@ -199,7 +211,7 @@ class MessageScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        self.text_view = TextLog(highlight=False, markup=False)
+        self.text_view = _create_text_log()
         yield self.text_view
         yield Footer()
 
