@@ -23,6 +23,7 @@ class EmailBrowserApp(App):
         ("q", "quit", "Quit"),
         ("f", "filter", "Filter"),
         ("s", "sort", "Sort"),
+        ("enter", "view", "View"),
     ]
 
     def __init__(self, db_path: Path) -> None:
@@ -86,7 +87,8 @@ class EmailBrowserApp(App):
         row_key = self.table.cursor_row_key
         if row_key is None:
             return
-        msg_id = int(row_key)
+        key_value = row_key.value if hasattr(row_key, "value") else row_key
+        msg_id = int(key_value)
         data = self._load_message(msg_id)
         if not data:
             return
@@ -121,7 +123,8 @@ class EmailBrowserApp(App):
             self.call_later(self._load_next_batch)
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        msg_id = int(event.row_key)
+        key_value = event.row_key.value if hasattr(event.row_key, "value") else event.row_key
+        msg_id = int(key_value)
         data = self._load_message(msg_id)
         if data:
             self.push_screen(MessageScreen(self, msg_id, data))
