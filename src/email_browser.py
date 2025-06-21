@@ -10,8 +10,16 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from textual.app import App, ComposeResult
-from textual.widgets import DataTable, Footer, Header, TextLog
+from textual.widgets import DataTable, Footer, Header
 from textual.screen import Screen
+
+# ``TextLog`` was renamed to ``Log`` in newer versions of Textual.  Import the
+# appropriate widget based on what is available so the browser works across a
+# range of Textual releases.
+try:  # pragma: no cover - import varies by Textual version
+    from textual.widgets import TextLog  # type: ignore
+except Exception:  # pragma: no cover - fallback for old/new versions
+    from textual.widgets import Log as TextLog
 
 
 class EmailBrowserApp(App):
