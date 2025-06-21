@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
 from textual.app import App, ComposeResult
-from textual.widgets import DataTable, Footer, Header, Input, TextLog
+from textual.widgets import DataTable, Footer, Header, TextLog
 from textual.screen import Screen
 
 
