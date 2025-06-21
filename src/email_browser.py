@@ -7,7 +7,7 @@ import base64
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List
 
 from textual.app import App, ComposeResult
 from textual.widgets import DataTable, Footer, Header, TextLog
@@ -21,7 +21,6 @@ class EmailBrowserApp(App):
 
     BINDINGS = [
         ("q", "quit", "Quit"),
-        ("enter", "view", "View message"),
         ("f", "filter", "Filter"),
         ("s", "sort", "Sort"),
     ]
@@ -31,20 +30,19 @@ class EmailBrowserApp(App):
         self.conn = sqlite3.connect(db_path)
         self.filter_clause = ""
         self.sort_clause = "received_at"
-        self.messages: Sequence[tuple] = []
         self.table: DataTable | None = None
+        self._cursor: sqlite3.Cursor | None = None
 
     # ------------------------------------------------------------------
     # Database helpers
     # ------------------------------------------------------------------
-    def _query_messages(self) -> None:
+    def _query_messages(self) -> sqlite3.Cursor:
         query = "SELECT id, received_at, subject FROM emails"
         if self.filter_clause:
             query += f" WHERE {self.filter_clause}"
         if self.sort_clause:
             query += f" ORDER BY {self.sort_clause}"
-        query += " LIMIT 1000"
-        self.messages = self.conn.execute(query).fetchall()
+        return self.conn.execute(query)
 
     def _load_message(self, msg_id: int) -> Dict[str, Any] | None:
         row = self.conn.execute(
@@ -67,11 +65,9 @@ class EmailBrowserApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
-        self._query_messages()
         assert self.table is not None
         self.table.add_columns("ID", "Received", "Subject")
-        for row in self.messages:
-            self.table.add_row(str(row[0]), row[1], row[2])
+        self.refresh_table()
         self.table.focus()
 
     # ------------------------------------------------------------------
@@ -81,8 +77,10 @@ class EmailBrowserApp(App):
         assert self.table is not None
         if not self.table.row_count:
             return
-        row_idx = self.table.cursor_row
-        msg_id = int(self.table.get_row(row_idx)[0])
+        row_key = self.table.cursor_row_key
+        if row_key is None:
+            return
+        msg_id = int(row_key)
         data = self._load_message(msg_id)
         if not data:
             return
@@ -102,12 +100,25 @@ class EmailBrowserApp(App):
 
     def refresh_table(self) -> None:
         assert self.table is not None
-        self._query_messages()
         self.table.clear()
-        for row in self.messages:
-            self.table.add_row(str(row[0]), row[1], row[2])
-        if self.table.row_count:
-            self.table.cursor_coordinate = (0, 0)
+        self._cursor = self._query_messages()
+        self._load_next_batch()
+
+    def _load_next_batch(self, batch_size: int = 1000) -> None:
+        assert self.table is not None
+        if self._cursor is None:
+            return
+        rows = self._cursor.fetchmany(batch_size)
+        for row in rows:
+            self.table.add_row(str(row[0]), row[1], row[2], key=row[0])
+        if rows:
+            self.call_later(self._load_next_batch)
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        msg_id = int(event.row_key)
+        data = self._load_message(msg_id)
+        if data:
+            self.push_screen(MessageScreen(self, msg_id, data))
 
     # ------------------------------------------------------------------
     # Attachment helpers
