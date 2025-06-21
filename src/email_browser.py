@@ -184,16 +184,19 @@ class MessageScreen(Screen):
         super().__init__()
         self.msg_id = msg_id
         self.data = data
-        self.log: TextLog | None = None
+        # Textual's Screen already exposes a ``log`` attribute for logging,
+        # so store the viewer widget under a different name to avoid
+        # clobbering that property.
+        self.text_view: TextLog | None = None
 
     def compose(self) -> ComposeResult:
         yield Header()
-        self.log = TextLog(highlight=False, markup=False)
-        yield self.log
+        self.text_view = TextLog(highlight=False, markup=False)
+        yield self.text_view
         yield Footer()
 
     def on_mount(self) -> None:
-        assert self.log is not None
+        assert self.text_view is not None
         lines: List[str] = []
         headers = self.data.get("headers", {})
         for k, values in headers.items():
@@ -202,7 +205,7 @@ class MessageScreen(Screen):
         lines.append("")
         self._payload_to_lines(self.data.get("payload"), lines)
         for line in lines:
-            self.log.write(line)
+            self.text_view.write(line)
 
     def action_save_attachments(self) -> None:
         self.app.save_attachments(self.msg_id)
