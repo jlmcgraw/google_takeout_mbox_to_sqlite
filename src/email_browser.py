@@ -92,7 +92,7 @@ class EmailBrowserApp(App):
         data = self._load_message(msg_id)
         if not data:
             return
-        self.push_screen(MessageScreen(self, msg_id, data))
+        self.push_screen(MessageScreen(msg_id, data))
 
     async def action_filter(self) -> None:
         clause = await self.ask("Filter SQL:")
@@ -127,7 +127,7 @@ class EmailBrowserApp(App):
         msg_id = int(key_value)
         data = self._load_message(msg_id)
         if data:
-            self.push_screen(MessageScreen(self, msg_id, data))
+            self.push_screen(MessageScreen(msg_id, data))
 
     # ------------------------------------------------------------------
     # Attachment helpers
@@ -180,9 +180,8 @@ class MessageScreen(Screen):
         ("a", "save_attachments", "Save attachments"),
     ]
 
-    def __init__(self, app: EmailBrowserApp, msg_id: int, data: Dict[str, Any]) -> None:
+    def __init__(self, msg_id: int, data: Dict[str, Any]) -> None:
         super().__init__()
-        self.app = app
         self.msg_id = msg_id
         self.data = data
         self.log: TextLog | None = None
