@@ -28,6 +28,12 @@ class EmailBrowserApp(App):
     def __init__(self, db_path: Path) -> None:
         super().__init__()
         self.conn = sqlite3.connect(db_path)
+        # Some databases may contain invalid UTF-8 in the generated
+        # ``subject`` column which causes ``fetchmany`` to raise an
+        # ``OperationalError`` when Textual loads rows.  Using a
+        # ``text_factory`` that replaces undecodable characters prevents
+        # the crash while still showing the rest of the row.
+        self.conn.text_factory = lambda b: b.decode("utf-8", "replace")
         self.filter_clause = ""
         self.sort_clause = "received_at"
         self.table: DataTable | None = None
