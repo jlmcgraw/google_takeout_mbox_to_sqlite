@@ -64,7 +64,11 @@ class EmailBrowserApp(App):
     # Database helpers
     # ------------------------------------------------------------------
     def _query_messages(self) -> sqlite3.Cursor:
-        query = "SELECT id, received_at, subject FROM emails"
+        query = (
+            "SELECT id, received_at, "
+            "json_extract(as_json, '$.headers.From[0]') AS sender, "
+            "subject FROM emails"
+        )
         if self.filter_clause:
             query += f" WHERE {self.filter_clause}"
         if self.sort_clause:
@@ -93,7 +97,7 @@ class EmailBrowserApp(App):
 
     def on_mount(self) -> None:
         assert self.table is not None
-        self.table.add_columns("ID", "Received", "Subject")
+        self.table.add_columns("ID", "Received", "From", "Subject")
         self.refresh_table()
         self.table.focus()
 
@@ -138,7 +142,7 @@ class EmailBrowserApp(App):
             return
         rows = self._cursor.fetchmany(batch_size)
         for row in rows:
-            self.table.add_row(str(row[0]), row[1], row[2], key=row[0])
+            self.table.add_row(str(row[0]), row[1], row[2], row[3], key=row[0])
         if rows:
             self.call_later(self._load_next_batch)
 
@@ -198,6 +202,7 @@ class MessageScreen(Screen):
     BINDINGS = [
         ("b", "app.pop_screen", "Back"),
         ("a", "save_attachments", "Save attachments"),
+        ("h", "toggle_headers", "Headers"),
     ]
 
     def __init__(self, msg_id: int, data: Dict[str, Any]) -> None:
@@ -208,21 +213,31 @@ class MessageScreen(Screen):
         # so store the viewer widget under a different name to avoid
         # clobbering that property.
         self.text_view: TextLog | None = None
+        self.header_table: DataTable | None = None
 
     def compose(self) -> ComposeResult:
         yield Header()
+        self.header_table = DataTable(zebra_stripes=True)
+        yield self.header_table
         self.text_view = _create_text_log()
         yield self.text_view
         yield Footer()
 
     def on_mount(self) -> None:
-        assert self.text_view is not None
-        lines: List[str] = []
+        assert self.text_view is not None and self.header_table is not None
+        self.header_table.add_columns("Header", "Value")
         headers = self.data.get("headers", {})
-        for k, values in headers.items():
+        for k in sorted(headers.keys()):
+            values = headers.get(k, [])
             if values:
-                lines.append(f"{k}: {values[0]}")
-        lines.append("")
+                self.header_table.add_row(k, ", ".join(values))
+        # hide header table initially
+        if hasattr(self.header_table, "display"):
+            self.header_table.display = False  # type: ignore[assignment]
+        else:
+            self.header_table.visible = False  # type: ignore[assignment]
+
+        lines: List[str] = []
         self._payload_to_lines(self.data.get("payload"), lines)
         for line in lines:
             self.text_view.write(line)
@@ -230,15 +245,24 @@ class MessageScreen(Screen):
     def action_save_attachments(self) -> None:
         self.app.save_attachments(self.msg_id)
 
+    def action_toggle_headers(self) -> None:
+        assert self.header_table is not None
+        if hasattr(self.header_table, "display"):
+            self.header_table.display = not self.header_table.display  # type: ignore[assignment]
+        else:
+            self.header_table.visible = not self.header_table.visible  # type: ignore[assignment]
+
     def _payload_to_lines(self, payload: Any, lines: List[str], indent: int = 0) -> None:
         if isinstance(payload, list):
             for part in payload:
                 self._payload_to_lines(part, lines, indent)
         elif isinstance(payload, dict):
             if payload.get("type") == "text":
-                text = payload.get("text", "")
-                for line in text.splitlines():
-                    lines.append(" " * indent + line)
+                ctype = payload.get("content_type", "")
+                if ctype.startswith("text/plain"):
+                    text = payload.get("text", "")
+                    for line in text.splitlines():
+                        lines.append(" " * indent + line)
             else:
                 lines.append(" " * indent + f"[binary data {payload.get('content_type')}]")
 
