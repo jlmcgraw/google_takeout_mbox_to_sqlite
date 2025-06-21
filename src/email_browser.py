@@ -46,7 +46,7 @@ class EmailBrowserApp(App):
         query += " LIMIT 1000"
         self.messages = self.conn.execute(query).fetchall()
 
-    def _get_message(self, msg_id: int) -> Dict[str, Any] | None:
+    def _load_message(self, msg_id: int) -> Dict[str, Any] | None:
         row = self.conn.execute(
             "SELECT as_json FROM emails WHERE id=?",
             (msg_id,),
@@ -83,7 +83,7 @@ class EmailBrowserApp(App):
             return
         row_idx = self.table.cursor_row
         msg_id = int(self.table.get_row(row_idx)[0])
-        data = self._get_message(msg_id)
+        data = self._load_message(msg_id)
         if not data:
             return
         self.push_screen(MessageScreen(self, msg_id, data))
@@ -118,7 +118,7 @@ class EmailBrowserApp(App):
             return
         out_dir = Path(path_str)
         out_dir.mkdir(parents=True, exist_ok=True)
-        data = self._get_message(msg_id)
+        data = self._load_message(msg_id)
         if not data:
             return
         attachments = self._collect_attachments(data.get("payload"))
