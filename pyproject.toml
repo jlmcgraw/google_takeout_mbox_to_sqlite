@@ -5,4 +5,5 @@ description = "Import an mbox archive into sqlite"
 requires-python = ">=3.12"
 dependencies = [
     "tqdm",
+    "textual>=0.58",
 ]

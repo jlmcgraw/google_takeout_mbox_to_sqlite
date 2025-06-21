@@ -39,6 +39,24 @@ The importer creates a single table named `emails` containing:
 
 A view called `email_overview` exposes the `Date` header for convenience.
 
+## Browsing the database
+
+After importing, you can explore the stored emails using a
+Textual-powered interface reminiscent of classic mail clients:
+
+```bash
+python -m src.email_browser <database-file>
+```
+
+Navigation uses the arrow keys (or `j`/`k`) to move through the message list.
+Press **Enter** to view the highlighted message. The list shows the sender for
+each email. Inside the message view, press `h` to toggle the header details,
+`a` to save attachments, `b` to go back and `q` to quit.
+
+Use `f` to apply a SQL filter, for example `subject LIKE '%report%'`, and
+`s` to change the sort column (such as `received_at DESC`).
+
+
 ## License
 
 This project is distributed under the terms of the GNU General Public License
